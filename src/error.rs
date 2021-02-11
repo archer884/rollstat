@@ -8,6 +8,28 @@ pub enum ParseEntryError {
     Version(ParseVersionError),
 }
 
+impl Display for ParseEntryError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParseEntryError::Format(msg) => write!(f, "missing {}", msg),
+            ParseEntryError::Int(e) => e.fmt(f),
+            ParseEntryError::Timestamp(e) => e.fmt(f),
+            ParseEntryError::Version(e) => e.fmt(f),
+        }
+    }
+}
+
+impl Error for ParseEntryError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            ParseEntryError::Format(_) => None,
+            ParseEntryError::Int(e) => Some(e),
+            ParseEntryError::Timestamp(e) => Some(e),
+            ParseEntryError::Version(e) => Some(e),
+        }
+    }
+}
+
 impl From<chrono::ParseError> for ParseEntryError {
     fn from(e: chrono::ParseError) -> Self {
         ParseEntryError::Timestamp(e)
