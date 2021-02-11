@@ -1,4 +1,4 @@
-use std::{fmt::Display, str::FromStr};
+use std::{fmt::Display, num::ParseIntError, str::FromStr};
 
 mod error;
 
@@ -16,7 +16,11 @@ impl FromStr for Entry {
     type Err = ParseEntryError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut segments = s.split(|u| u == '|' || u == ':');
+        fn parse_values(s: &str) -> Result<Vec<i32>, ParseIntError> {
+            s.split(',').map(|x| x.parse()).collect()
+        }
+        
+        let mut segments = s.split('|');
 
         let timestamp = segments
             .next()
@@ -26,22 +30,18 @@ impl FromStr for Entry {
             .next()
             .ok_or(ParseEntryError::Format("version"))?
             .parse()?;
-        let max = segments
-            .next()
-            .ok_or(ParseEntryError::Format("max"))?
-            .parse()?;
-        let values: Result<Vec<_>, _> = segments
-            .next()
-            .ok_or(ParseEntryError::Format("values"))?
-            .split(',')
-            .map(|x| x.parse::<i32>())
-            .collect();
+
+        let max_and_values = segments.next().ok_or(ParseEntryError::Format("missing max/values"))?;
+        let (max, values) = match max_and_values.find(':') {
+            Some(mid) => (&max_and_values[..mid], &max_and_values[mid + 1..]),
+            None => return Err(ParseEntryError::Format("missing values")),
+        };
 
         Ok(Entry {
             timestamp,
             version,
-            max,
-            values: values?,
+            max: max.parse()?,
+            values: parse_values(values)?,
         })
     }
 }
